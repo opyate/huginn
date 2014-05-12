@@ -87,8 +87,29 @@ module Agents
     def post_data(data)
       uri = generate_uri
       req = Net::HTTP::Post.new(uri.request_uri, headers)
-      req.form_data = data
+      set_post_data(req, data, headers)
+      auth_if_required(req, uri)
       Net::HTTP.start(uri.hostname, uri.port, :use_ssl => uri.scheme == "https") { |http| http.request(req) }
+    end
+
+    def set_post_data(req, data, headers)
+      # downcase the header keys
+      downcase_headers = {}
+      headers.each_pair do |k, v|
+        downcase_headers[k.downcase] = v
+      end
+
+      if downcase_headers.has_key?("accept") && downcase_headers.fetch("accept") == "application/json"
+        req.body = data.to_json
+      else
+        req.form_data = data
+      end
+    end
+
+    def auth_if_required(req, uri)
+      if uri.user
+        req.basic_auth uri.user, uri.password
+      end
     end
 
     def get_data(data)
